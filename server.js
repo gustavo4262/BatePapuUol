@@ -2,6 +2,7 @@ import express, { text } from "express";
 import cors from "cors";
 import Joi from "joi";
 import { removeAccents } from "./utils.js";
+import { stripHtml } from "string-strip-html";
 
 let participants = [{ name: "Joao", lastStatus: 1623560741835 }];
 let messages = [
