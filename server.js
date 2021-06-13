@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import { validateMessage, removeAccents } from "./utils.js";
 
-const participants = [{ name: "Joao", lastStatus: 12313123 }];
-const messages = [
+let participants = [{ name: "Joao", lastStatus: 1623560741835 }];
+let messages = [
   {
     from: "João",
     to: "Todos",
@@ -67,5 +67,31 @@ app.get("/messages", (req, res) => {
     .slice(-limit);
   res.send(messagesShown);
 });
+
+app.post("/status", (req, res) => {
+  const user = req.headers.user;
+  if (!participants.filter((p) => p.name === user).length) {
+    res.sendStatus(400);
+    return;
+  }
+  const participant = participants.find((p) => p.name === user);
+  participant.lastStatus = Date.now();
+  res.sendStatus(200);
+});
+
+setInterval(() => {
+  participants = participants.filter((p) => {
+    let newMesage = {
+      from: p.name,
+      to: "Todos",
+      text: "sai da sala...",
+      type: "status",
+      time: new Date().toLocaleTimeString("pt-br"),
+    };
+    messages.push(newMesage);
+    let now = Date.now();
+    return now - p.lastStatus > 10;
+  });
+}, 15000);
 
 app.listen(4000);
