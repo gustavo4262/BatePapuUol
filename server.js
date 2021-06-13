@@ -1,6 +1,7 @@
-import express from "express";
+import express, { text } from "express";
 import cors from "cors";
-import { validateMessage, removeAccents } from "./utils.js";
+import Joi from "joi";
+import { removeAccents } from "./utils.js";
 
 let participants = [{ name: "Joao", lastStatus: 1623560741835 }];
 let messages = [
@@ -13,17 +14,32 @@ let messages = [
   },
 ];
 
+const participantSchema = Joi.object({
+  name: Joi.string().required(),
+  lastStatus: Joi.number(),
+});
+
+const messageSchema = Joi.object({
+  from: Joi.string().required(),
+  to: Joi.string().required(),
+  text: Joi.string().required(),
+  type: Joi.string().valid("message", "private_message").required(),
+  time: Joi.string(),
+});
+
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 app.post("/participants", (req, res) => {
-  const { name } = removeAccents(req.body);
-  if (!name || participants.filter((p) => p.name === name).length) {
+  const { name } = req.body;
+  const newParticipant = { name, lastStatus: Date.now() };
+  const val = participantSchema.validate(newParticipant);
+  if (val.error || participants.filter((p) => p.name === name).length) {
+    Boolean(val.error) && console.log(val.error);
     res.sendStatus(400);
     return;
   }
-  const newParticipant = { name, lastStatus: Date.now() };
   participants.push(newParticipant);
   const newMessage = {
     from: name,
@@ -43,12 +59,20 @@ app.get("/participants", (req, res) => {
 app.post("/messages", (req, res) => {
   const { to, text, type } = removeAccents(req.body);
   const from = req.headers.user;
-  const newMessage = { from, to, text, type };
-  if (!validateMessage(newMessage, participants)) {
+  const newMessage = {
+    from,
+    to,
+    text,
+    type,
+    time: new Date().toLocaleTimeString("pt-br"),
+  };
+  const val = messageSchema.validate(newMessage);
+  if (val.error || !participants.filter((p) => p.name === from).length) {
+    console.log(val.error);
+    console.log(participants.filter((p) => p.name === from).length);
     res.sendStatus(400);
     return;
   }
-  newMessage.time = new Date().toLocaleTimeString("pt-br");
   messages.push(newMessage);
   res.sendStatus(200);
 });
